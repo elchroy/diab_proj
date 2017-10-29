@@ -1,4 +1,5 @@
 from flask import Flask, jsonify, request
+from flask_cors import CORS, cross_origin
 from numpy import loadtxt
 import network
 
@@ -15,6 +16,9 @@ import network
 """
 
 app = Flask(__name__)
+cors = CORS(app)
+
+app.config['CORS_HEADERS'] = 'Content-Type'
 
 net = network.Network([7, 3000, 30, 1])
 weights = []
@@ -40,11 +44,13 @@ def prepare_input(request_json):
 	]
 
 @app.route('/', methods=['GET'])
+@cross_origin()
 def home():
 	return jsonify("Welcome to Roy's Diabetes Classifier")
 
 
 @app.route('/predict', methods=['POST'])
+@cross_origin()
 def predict():
 	input_vector = prepare_input(request.json)
 	prediction = net.predict(input_vector)
