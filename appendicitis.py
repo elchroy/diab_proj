@@ -10,8 +10,8 @@ num_of_features = 7
 net = Network([num_of_features, 3000, 30, 1])
 
 # Prepare the training data
-train = genfromtxt('appendicitis_train.csv', delimiter=",")
-test = genfromtxt('appendicitis_test.csv', delimiter=",")
+train = genfromtxt('data/appendicitis/train.csv', delimiter=",")
+test = genfromtxt('data/appendicitis/test.csv', delimiter=",")
 
 x_train = train[:, 0:num_of_features]
 y_train = train[:, [num_of_features]]
@@ -26,3 +26,10 @@ if len(argv) > 1:
 	lr = float(argv[1])
 else:
 	lr = 0.03
+
+# Train the neural network
+weights, biases = net.train(training_data, epochs=10000, mini_batch_size=13, lr=lr, check=100, test_data=test_data)
+
+# for i in xrange(len(weights)):
+# 	savetxt("params/weights/weight_{0}.txt".format(i), weights[i])
+# 	savetxt("params/biases/bias_{0}.txt".format(i), biases[i])

@@ -40,7 +40,7 @@ def prepare_input(request_json):
 		float(request_json['serum_insulin']),
 		float(request_json['body_mass_index']),
 		float(request_json['pedigree_func']),
-		# float(request_json['age'])
+		float(request_json['age'])
 	]
 
 @app.route('/', methods=['GET'])

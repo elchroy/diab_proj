@@ -28,7 +28,7 @@ class Network(object):
 				accuracy += 1
 			if compare:
 				pass
-				print act, y_test
+				# print act, y_test
 		return accuracy, total
 
 	def is_correct (self, act, target):
