@@ -54,7 +54,7 @@ def home():
 def predict():
 	input_vector = prepare_input(request.json)
 	prediction = net.predict(input_vector)
-	message = "DIABETIC" if prediction >= 0.5 else "NOT_DIABETIC"
+	message = "DIABETIC" if prediction >= 0.5 else "NOT DIABETIC"
 	res = {
 		'message': message,
 		'prediction': round(prediction)
