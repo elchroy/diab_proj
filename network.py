@@ -2,6 +2,23 @@ from numpy import reshape, array, zeros, random, exp, ones
 from time import time
 from pdb import set_trace
 
+class ParameterMatrix(object):
+	def __init__ (self, matrix):
+		self.matrix = matrix
+
+	def update (self, adjustment):
+		self.matrix = self.matrix + adjustment
+
+
+class BiasMatrix(ParameterMatrix):
+	def __init__ (self, matrix):
+		ParameterMatrix.__init__(self, matrix)
+
+
+class WeightMatrix(ParameterMatrix):
+	def __init__ (self, matrix):
+		ParameterMatrix.__init__(self, matrix)
+
 class Network(object):
 	
 	def __init__ (self, sizes):
@@ -9,13 +26,16 @@ class Network(object):
 		self.sizes = sizes
 		self.num_of_layers = len(sizes)
 		self.size = self.num_of_layers - 1
-		self.no_features = self.sizes[0]		
-		self.weights = [2 * random.random((a, b)) - 1 for a, b in zip(sizes[:-1], sizes[1:]) ]
-		self.biases = [2 * random.random((a, 1)) - 1 for a in sizes[1:]]		
-		self.weight_deltas = [ zeros(w.shape) for w in self.weights]
-		self.bias_deltas = [ zeros(b.shape) for b in self.biases]
-		self.bias_velocities = [ zeros(b.shape) for b in self.biases]
-		self.weight_velocities = [ zeros(w.shape) for w in self.weights]
+		self.no_features = self.sizes[0]
+
+		self.weights = [WeightMatrix(2 * random.random((a, b)) - 1) for a, b in zip(sizes[:-1], sizes[1:]) ]
+		self.biases = [BiasMatrix(2 * random.random((a, 1)) - 1) for a in sizes[1:]]		
+		
+		self.weight_deltas = [ zeros(w.matrix.shape) for w in self.weights]
+		self.bias_deltas = [ zeros(b.matrix.shape) for b in self.biases]
+
+		self.bias_velocities = [ zeros(b.matrix.shape) for b in self.biases]
+		self.weight_velocities = [ zeros(w.matrix.shape) for w in self.weights]
 
 	def evaluate (self, test_data, accuracy=0.0, compare=False):
 		total = len(test_data)
@@ -23,7 +43,7 @@ class Network(object):
 		for x_test, y_test in test_data:
 			act = reshape(x_test, (self.no_features, 1))
 			for l in xrange(self.size):
-				act = self.sigmoid(self.weights[l].T.dot(act) + self.biases[l])
+				act = self.sigmoid(self.weights[l].matrix.T.dot(act) + self.biases[l].matrix)
 			if self.is_correct(act, y_test):
 				accuracy += 1
 			if compare:
@@ -36,7 +56,7 @@ class Network(object):
 
 	def predict(self, data):
 		for l in xrange(self.size):
-			data = self.sigmoid(self.weights[l].T.dot(data) + self.biases[l])
+			data = self.sigmoid(self.weights[l].matrix.T.dot(data) + self.biases[l].matrix)
 		return data
 
 	# This is the Min-Max Normalization
@@ -45,6 +65,19 @@ class Network(object):
 		
 	def standardize (self, xtrain):
 		return (xtrain - xtrain.mean()) / xtrain.std()
+
+	def feedforward (self, activation):
+		activations = [activation]
+		for we, bi in zip(self.weights, self.biases):
+			activation = self.sigmoid(we.matrix.T.dot(activation) + bi.matrix)
+			activations.append(activation)
+		return activations
+
+	def backprop (self, activations, delta):
+		for l in xrange(self.size):
+			self.bias_deltas[-l-1] = delta
+			self.weight_deltas[-l-1] = activations[-l-2].dot(delta.T)
+			delta = (self.weights[-l-1].matrix * self.sigmoid_derivative(activations[-l-2])).dot(delta)
 		
 	def train (self, training_data, epochs=10000000, momentum_factor=0.5, check=10, lr=0.03, mini_batch_size=None, test_data=None):
 		total = len(training_data)
@@ -59,24 +92,22 @@ class Network(object):
 				batch_total = len(mini_batch)
 				for x, y in mini_batch:
 					activation = reshape(x, (self.no_features, 1))
-					activations = [activation]
-					for we, bi in zip(self.weights, self.biases):
-						activation = self.sigmoid(we.T.dot(activation) + bi)
-						activations.append(activation)
+					
+					# Feed-Forward
+					activations = self.feedforward(activation)
 
 					error_derivative = self.cost_function_derivative(activations[-1], y)
 					delta = error_derivative * self.sigmoid_derivative(activations[-1])
-					
-					for l in xrange(self.size):
-						self.bias_deltas[-l-1] = delta
-						self.weight_deltas[-l-1] = activations[-l-2].dot(delta.T)
-						delta = (self.weights[-l-1] * self.sigmoid_derivative(activations[-l-2])).dot(delta)
+
+					# Back-Propagation
+					self.backprop(activations, delta)
 
 					for l in xrange(self.size):
 						self.bias_velocities[l] = (momentum_factor * self.bias_velocities[l]) - ((lr/batch_total) * self.bias_deltas[l])
 						self.weight_velocities[l] = (momentum_factor * self.weight_velocities[l]) - ((lr/batch_total) * self.weight_deltas[l])
-						self.biases[l] = self.biases[l] + self.bias_velocities[l]
-						self.weights[l] = self.weights[l] + self.weight_velocities[l]
+						# Update Weights and Biases
+						self.biases[l].update(self.bias_velocities[l])
+						self.weights[l].update(self.weight_velocities[l])
 
 			if iter % check == 0:
 				accuracy = 0.0
